@@ -43,8 +43,7 @@ public class WriteThread extends Thread {
 	public synchronized void writeEncoded(byte[] data)
 			throws InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException,
 			IllegalBlockSizeException, BadPaddingException, IOException {
-		NetworkConstants.LOGGER.log(Level.INFO, "Socket Write-Encoded: " + Arrays.toString(data) + " >> "
-				+ socket.getInetAddress().toString() + ":" + socket.getPort());
+		NetworkConstants.LOGGER.log(Level.INFO, "Socket Write-Encoded: " + Arrays.toString(data));
 		dataOut.add(CryptoManager.encrypt(socket.getInetAddress(), data));
 	}
 
@@ -54,8 +53,7 @@ public class WriteThread extends Thread {
 	 * @param data
 	 */
 	public synchronized void writeRaw(byte[] data) {
-		NetworkConstants.LOGGER.log(Level.INFO, "Socket Write-Raw: " + Arrays.toString(data) + " >> "
-				+ socket.getInetAddress().toString() + ":" + socket.getPort());
+		NetworkConstants.LOGGER.log(Level.INFO, "Socket Write-Raw: " + Arrays.toString(data));
 		dataOut.add(data);
 	}
 
@@ -72,19 +70,18 @@ public class WriteThread extends Thread {
 		run = false;
 	}
 
-	private synchronized void doRun() {
-		if (!dataOut.isEmpty())
-			try {
-				write(dataOut.take());
-			} catch (IOException | InterruptedException e) {
-				e.printStackTrace();
-			}
-	}
-
 	@Override
 	public void run() {
 		while (run) {
-			doRun();
+			if (!dataOut.isEmpty()) {
+				try {
+					write(dataOut.take());
+					NetworkConstants.LOGGER.log(Level.INFO,
+							"Data sent >> " + socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
+				} catch (IOException | InterruptedException e) {
+					NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
+				}
+			}
 		}
 	}
 

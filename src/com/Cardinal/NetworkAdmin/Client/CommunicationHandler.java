@@ -21,11 +21,16 @@ public class CommunicationHandler {
 	private Socket socket;
 	private WriteThread write;
 	private ReadThread read;
+	private boolean isOpen = false;
 
 	public CommunicationHandler(Socket socket) {
 		this.socket = socket;
 		write = new WriteThread(socket);
 		read = new ReadThread(socket);
+	}
+
+	public boolean isOpen() {
+		return isOpen;
 	}
 
 	public Socket getSocket() {
@@ -59,6 +64,8 @@ public class CommunicationHandler {
 	}
 
 	public void close() throws IOException {
+		NetworkConstants.LOGGER.log(Level.INFO,
+				"Closing connection at " + socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		CryptoManager.removeKeys(socket.getInetAddress());
 		write.close();
 		read.close();
@@ -66,8 +73,12 @@ public class CommunicationHandler {
 	}
 
 	public void open() {
-		NetworkConstants.LOGGER.log(Level.INFO,
-				"Opening connection with socket at " + socket.getInetAddress().toString() + ":" + socket.getPort());
+		if (isOpen)
+			return;
+
+		isOpen = true;
+		NetworkConstants.LOGGER.log(Level.INFO, "Opening communication with socket at "
+				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		read.start();
 		write.start();
 
@@ -75,16 +86,18 @@ public class CommunicationHandler {
 		try {
 			write.writeRaw(CryptoManager.getPublicKey(address).getEncoded());
 		} catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-			e.printStackTrace();
+			NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
 		}
 
 		try {
 			byte[] response = read.readRaw();
 			CryptoManager.setPublicKey(address, response);
 		} catch (InterruptedException | InvalidKeySpecException | NoSuchAlgorithmException e) {
-			e.printStackTrace();
+			NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
+			;
 		}
-
+		NetworkConstants.LOGGER.log(Level.INFO, "Communication established with socket at "
+				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 	}
 
 	@Override

@@ -3,6 +3,7 @@ package com.Cardinal.NetworkAdmin.Client;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -34,6 +35,8 @@ public class ReadThread extends Thread {
 			in = socket.getInputStream();
 		byte[] buffer = new byte[NetworkConstants.BUFFER];
 		int size = in.read(buffer);
+		NetworkConstants.LOGGER.log(Level.INFO,
+				"Data recieved << " + socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		return Arrays.copyOfRange(buffer, 0, size);
 	}
 
@@ -54,8 +57,8 @@ public class ReadThread extends Thread {
 			throws InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, IllegalBlockSizeException,
 			BadPaddingException, NoSuchPaddingException, NoSuchProviderException, InterruptedException {
 		byte[] data = CryptoManager.decrypt(socket.getInetAddress(), dataIn.take());
-		NetworkConstants.LOGGER.log(Level.INFO, "Socket Read-Decoded: " + Arrays.toString(data) + " >> "
-				+ socket.getInetAddress().toString() + ":" + socket.getPort());
+		NetworkConstants.LOGGER.log(Level.INFO, "Socket Read-Decoded: " + Arrays.toString(data) + "\n<< "
+				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		return data;
 	}
 
@@ -67,8 +70,8 @@ public class ReadThread extends Thread {
 	 */
 	public synchronized byte[] readRaw() throws InterruptedException {
 		byte[] data = dataIn.take();
-		NetworkConstants.LOGGER.log(Level.INFO, "Socket Read-Raw: " + Arrays.toString(data) + " >> "
-				+ socket.getInetAddress().toString() + ":" + socket.getPort());
+		NetworkConstants.LOGGER.log(Level.INFO, "Socket Read-Raw: " + Arrays.toString(data) + "\n<< "
+				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		return data;
 	}
 
@@ -79,18 +82,22 @@ public class ReadThread extends Thread {
 		run = false;
 	}
 
-	private synchronized void doRun() {
-		try {
-			dataIn.add(read());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
 	@Override
 	public void run() {
 		while (run) {
-			doRun();
+			try {
+				dataIn.add(read());
+			} catch (IOException e) {
+				NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
+				if (e instanceof SocketException && e.getMessage().contains("reset")) {
+					run = false;
+					try {
+						SocketHandler.killConnection(socket.getInetAddress());
+					} catch (IOException e1) {
+						NetworkConstants.LOGGER.log(Level.WARNING, e1.getMessage(), e1);
+					}
+				}
+			}
 		}
 	}
 

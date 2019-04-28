@@ -53,15 +53,20 @@ public class CryptoManager {
 		PUBLIC_KEYS.put(address, decodeKey(key));
 	}
 
+	private static KeyPair getKeys(InetAddress address) throws NoSuchAlgorithmException, NoSuchProviderException {
+		if (!KEYS.containsKey(address))
+			KEYS.put(address, generateKeyPair());
+
+		return KEYS.get(address);
+	}
+
 	public static PublicKey getPublicKey(InetAddress address) throws NoSuchAlgorithmException, NoSuchProviderException {
-		return KEYS.containsKey(address) ? KEYS.get(address).getPublic()
-				: KEYS.put(address, generateKeyPair()).getPublic();
+		return getKeys(address).getPublic();
 	}
 
 	private static PrivateKey getPrivateKey(InetAddress address)
 			throws NoSuchAlgorithmException, NoSuchProviderException {
-		return KEYS.containsKey(address) ? KEYS.get(address).getPrivate()
-				: KEYS.put(address, generateKeyPair()).getPrivate();
+		return getKeys(address).getPrivate();
 	}
 
 	public static boolean checkCredentials(InetAddress address, byte[] credentials)

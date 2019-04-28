@@ -2,13 +2,25 @@ package com.Cardinal.NetworkAdmin;
 
 import java.lang.Thread.State;
 
-import com.Cardinal.NetworkAdmin.Client.ClientDiscoveryThread;
-import com.Cardinal.NetworkAdmin.Server.ServerBroadcastThread;
+import com.Cardinal.NetworkAdmin.Client.ServerDiscoveryThread;
+import com.Cardinal.NetworkAdmin.Server.ClientBroadcastThread;
 import com.Cardinal.NetworkAdmin.Server.ServerSocketHandler;
 
 public class NetworkHandler {
 
-	private static Thread client, server, socket;
+	private static ServerDiscoveryThread server;
+	private static ClientBroadcastThread client;
+	private static Thread socket;
+	public static int mode = 0;
+
+	public static void shutdownUDP() {
+		if (client != null && client.isAlive()) {
+			client.kill();
+		}
+		if (server != null && server.isAlive()) {
+			server.kill();
+		}
+	}
 
 	public static synchronized void restartThread(int flag) throws InterruptedException {
 		if (flag == 1) {
@@ -33,6 +45,7 @@ public class NetworkHandler {
 	}
 
 	public static synchronized void broadcastServer() {
+		mode = 1;
 		if (socket == null || socket.getState().equals(State.TERMINATED)) {
 			socket = new Thread(new ServerSocketHandler());
 			socket.start();
@@ -40,14 +53,15 @@ public class NetworkHandler {
 			socket.start();
 		}
 		if (server == null || server.getState().equals(State.TERMINATED)) {
-			server = new Thread(new ServerBroadcastThread());
+			server = new ServerDiscoveryThread();
 			server.start();
 		}
 	}
 
 	public static synchronized void discoverClient() {
+		mode = 0;
 		if (client == null || client.getState().equals(State.TERMINATED)) {
-			client = new Thread(new ClientDiscoveryThread());
+			client = new ClientBroadcastThread();
 			client.start();
 		}
 	}
