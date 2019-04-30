@@ -23,11 +23,15 @@ public class ReadThread extends Thread {
 
 	private Socket socket;
 	private InputStream in;
-	private boolean run = true;
+	private boolean run = true, data = false;
 	private LinkedBlockingQueue<byte[]> dataIn = new LinkedBlockingQueue<byte[]>();
 
 	public ReadThread(Socket socket) {
 		this.socket = socket;
+	}
+
+	public synchronized boolean dataAvailable() {
+		return data;
 	}
 
 	private byte[] read() throws IOException {
@@ -38,6 +42,12 @@ public class ReadThread extends Thread {
 		NetworkConstants.LOGGER.log(Level.INFO,
 				"Data recieved << " + socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		return Arrays.copyOfRange(buffer, 0, size);
+	}
+
+	private synchronized byte[] take() throws InterruptedException {
+		byte[] data = dataIn.take();
+		this.data = dataIn.isEmpty();
+		return data;
 	}
 
 	/**
@@ -56,7 +66,7 @@ public class ReadThread extends Thread {
 	public synchronized byte[] readDecoded()
 			throws InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, IllegalBlockSizeException,
 			BadPaddingException, NoSuchPaddingException, NoSuchProviderException, InterruptedException {
-		byte[] data = CryptoManager.decrypt(socket.getInetAddress(), dataIn.take());
+		byte[] data = CryptoManager.decrypt(socket.getInetAddress(), take());
 		NetworkConstants.LOGGER.log(Level.INFO, "Socket Read-Decoded: " + Arrays.toString(data) + "\n<< "
 				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		return data;
@@ -69,7 +79,7 @@ public class ReadThread extends Thread {
 	 * @throws InterruptedException
 	 */
 	public synchronized byte[] readRaw() throws InterruptedException {
-		byte[] data = dataIn.take();
+		byte[] data = take();
 		NetworkConstants.LOGGER.log(Level.INFO, "Socket Read-Raw: " + Arrays.toString(data) + "\n<< "
 				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
 		return data;
@@ -87,6 +97,7 @@ public class ReadThread extends Thread {
 		while (run) {
 			try {
 				dataIn.add(read());
+				data = true;
 			} catch (IOException e) {
 				NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
 				if (e instanceof SocketException && e.getMessage().contains("reset")) {

@@ -2,8 +2,8 @@ package com.Cardinal.NetworkAdmin;
 
 import java.lang.Thread.State;
 
-import com.Cardinal.NetworkAdmin.Client.ServerDiscoveryThread;
-import com.Cardinal.NetworkAdmin.Server.ClientBroadcastThread;
+import com.Cardinal.NetworkAdmin.Client.ClientBroadcastThread;
+import com.Cardinal.NetworkAdmin.Server.ServerDiscoveryThread;
 import com.Cardinal.NetworkAdmin.Server.ServerSocketHandler;
 
 public class NetworkHandler {
