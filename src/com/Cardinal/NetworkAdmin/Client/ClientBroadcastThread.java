@@ -1,4 +1,4 @@
-package com.Cardinal.NetworkAdmin.Server;
+package com.Cardinal.NetworkAdmin.Client;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -15,7 +15,7 @@ import java.util.logging.Level;
 
 import com.Cardinal.NetworkAdmin.NetworkConstants;
 import com.Cardinal.NetworkAdmin.NetworkHandler;
-import com.Cardinal.NetworkAdmin.Client.SocketHandler;
+import com.Cardinal.NetworkAdmin.Server.ServerSocketHandler;
 import com.Cardinal.NetworkAdmin.Utils.NetworkUtils;
 
 public class ClientBroadcastThread extends Thread {
@@ -86,7 +86,7 @@ public class ClientBroadcastThread extends Thread {
 			// Wait for a response
 			byte[] recvBuf = new byte[NetworkConstants.BUFFER];
 			DatagramPacket receivePacket = new DatagramPacket(recvBuf, recvBuf.length);
-
+			c.setSoTimeout(NetworkConstants.TIMEOUT);
 			do {
 				c.receive(receivePacket);
 

@@ -1,4 +1,4 @@
-package com.Cardinal.NetworkAdmin.Client;
+package com.Cardinal.NetworkAdmin.Server;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -8,7 +8,6 @@ import java.net.SocketException;
 import java.util.logging.Level;
 
 import com.Cardinal.NetworkAdmin.NetworkConstants;
-import com.Cardinal.NetworkAdmin.Server.ServerSocketHandler;
 
 public class ServerDiscoveryThread extends Thread {
 
