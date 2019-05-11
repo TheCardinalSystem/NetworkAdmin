@@ -28,6 +28,24 @@ public class ReadThread extends Thread {
 
 	public ReadThread(Socket socket) {
 		this.socket = socket;
+		this.setName("ReadThread" + socket.getInetAddress().getHostAddress());
+	}
+
+	public void pop()
+			throws InterruptedException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException,
+			IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, NoSuchProviderException {
+		byte[] data = readDecoded();
+		NetworkConstants.LOGGER.log(Level.INFO, "Socket Pop: " + Arrays.toString(data) + "\n<< "
+				+ socket.getRemoteSocketAddress().toString().replaceFirst("/", ""));
+	}
+
+	public byte[] peek() {
+		return dataIn.peek();
+	}
+
+	public byte[] peekDecoded() throws InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException,
+			IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, NoSuchProviderException {
+		return CryptoManager.decrypt(socket.getInetAddress(), dataIn.peek());
 	}
 
 	public synchronized boolean dataAvailable() {
@@ -46,7 +64,7 @@ public class ReadThread extends Thread {
 
 	private synchronized byte[] take() throws InterruptedException {
 		byte[] data = dataIn.take();
-		this.data = dataIn.isEmpty();
+		this.data = !dataIn.isEmpty();
 		return data;
 	}
 
@@ -89,21 +107,21 @@ public class ReadThread extends Thread {
 	 * Stops the thread loop. Does not close the socket or input stream.
 	 */
 	public synchronized void close() {
-		run = false;
+		interrupt();
 	}
 
 	@Override
 	public void run() {
 		while (run) {
 			try {
+				data = !dataIn.isEmpty();
 				dataIn.add(read());
-				data = true;
 			} catch (IOException e) {
 				NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
 				if (e instanceof SocketException && e.getMessage().contains("reset")) {
 					run = false;
 					try {
-						SocketHandler.killConnection(socket.getInetAddress());
+						SocketHandler.killConnection(socket.getInetAddress(), false);
 					} catch (IOException e1) {
 						NetworkConstants.LOGGER.log(Level.WARNING, e1.getMessage(), e1);
 					}

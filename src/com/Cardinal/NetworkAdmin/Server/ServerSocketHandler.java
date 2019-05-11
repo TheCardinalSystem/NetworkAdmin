@@ -11,12 +11,18 @@ import com.Cardinal.NetworkAdmin.NetworkConstants;
 import com.Cardinal.NetworkAdmin.Client.CommunicationHandler;
 import com.Cardinal.NetworkAdmin.Client.SocketHandler;
 
-public class ServerSocketHandler implements Runnable {
+public class ServerSocketHandler extends Thread {
 
 	public static HashSet<InetAddress> allowedConnections = new HashSet<InetAddress>();
 
 	private static ServerSocket server;
-	private static boolean initializing = false;
+	private static boolean initializing = false, plannedClose = false;
+
+	public void close() throws IOException {
+		NetworkConstants.LOGGER.log(Level.INFO, "Closing server socket thread...");
+		plannedClose = true;
+		server.close();
+	}
 
 	public static synchronized int getPort() {
 		while (initializing)
@@ -52,7 +58,6 @@ public class ServerSocketHandler implements Runnable {
 	public static synchronized void allowConnection(InetAddress address) throws IOException {
 		NetworkConstants.LOGGER.log(Level.INFO, "Whitelisted IP: " + address.toString().replaceFirst("/", ""));
 		allowedConnections.add(address);
-		SocketHandler.openConnection(address, 0);
 	}
 
 	@Override
@@ -70,15 +75,19 @@ public class ServerSocketHandler implements Runnable {
 						"Connected to socket at " + socket.getInetAddress().toString() + ":" + socket.getPort());
 				CommunicationHandler handler = new CommunicationHandler(socket);
 				if (allowedConnections.contains(socket.getInetAddress())) {
-					handler.open();
+					handler.start();
 				} else {
 					NetworkConstants.LOGGER.log(Level.INFO, "Connection not allowed for " + socket.getInetAddress());
 				}
 				SocketHandler.addConnection(socket.getInetAddress(), handler);
 			} catch (IOException e) {
+				if (plannedClose) {
+					break;
+				}
 				NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
 			}
 		}
+		NetworkConstants.LOGGER.log(Level.INFO, "Server socket thread closed.");
 	}
 
 }

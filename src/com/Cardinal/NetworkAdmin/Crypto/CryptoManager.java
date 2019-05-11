@@ -14,6 +14,8 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.crypto.BadPaddingException;
@@ -102,6 +104,19 @@ public class CryptoManager {
 		Cipher cipher = Cipher.getInstance(ALGORITHM);
 		cipher.init(Cipher.DECRYPT_MODE, privateKey);
 
+		if (inputData.length > cipher.getBlockSize()) {
+			ArrayList<byte[]> chunks = new ArrayList<byte[]>();
+			int chunk = cipher.getBlockSize();
+			for (int i = 0; i < inputData.length; i += chunk) {
+				chunks.add(Arrays.copyOfRange(inputData, i, Math.min(inputData.length, i + chunk)));
+			}
+			ArrayList<byte[]> decryptedChunks = new ArrayList<byte[]>();
+			for(byte[] array : chunks) {
+				decryptedChunks.add(cipher.doFinal(array));
+			}
+			
+		}
+
 		byte[] decryptedBytes = cipher.doFinal(inputData);
 
 		return decryptedBytes;
@@ -110,7 +125,7 @@ public class CryptoManager {
 	private static KeyPair generateKeyPair() throws NoSuchAlgorithmException, NoSuchProviderException {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
 
-		SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+		SecureRandom random = SecureRandom.getInstance("Windows-PRNG");
 
 		// 512 is keysize
 		keyGen.initialize(512, random);

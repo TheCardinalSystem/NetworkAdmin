@@ -21,11 +21,12 @@ public class WriteThread extends Thread {
 
 	private Socket socket;
 	private OutputStream out;
-	private boolean run = true;
+	private boolean run = true, flush = false;
 	private LinkedBlockingQueue<byte[]> dataOut = new LinkedBlockingQueue<byte[]>();
 
 	public WriteThread(Socket socket) {
 		this.socket = socket;
+		this.setName("WriteThread" + socket.getInetAddress().getHostAddress());
 	}
 
 	/**
@@ -66,8 +67,9 @@ public class WriteThread extends Thread {
 	/**
 	 * Stops the thread loop. Does not close the socket or output stream.
 	 */
-	public synchronized void close() {
+	public synchronized void close(boolean flush) {
 		run = false;
+		this.flush = flush;
 	}
 
 	@Override
@@ -83,6 +85,12 @@ public class WriteThread extends Thread {
 				}
 			}
 		}
+		if (flush)
+			try {
+				out.flush();
+			} catch (IOException e) {
+				NetworkConstants.LOGGER.log(Level.WARNING, e.getMessage(), e);
+			}
 	}
 
 }

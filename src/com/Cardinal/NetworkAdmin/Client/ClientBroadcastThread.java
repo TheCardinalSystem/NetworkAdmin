@@ -15,13 +15,22 @@ import java.util.logging.Level;
 
 import com.Cardinal.NetworkAdmin.NetworkConstants;
 import com.Cardinal.NetworkAdmin.NetworkHandler;
-import com.Cardinal.NetworkAdmin.Server.ServerSocketHandler;
+import com.Cardinal.NetworkAdmin.NetworkHandler.ThreadLock;
 import com.Cardinal.NetworkAdmin.Utils.NetworkUtils;
 
 public class ClientBroadcastThread extends Thread {
 
 	private DatagramSocket c;
-	private boolean transition = true, run = true;
+	private boolean run = true;
+	private ThreadLock lock;
+
+	public ClientBroadcastThread() {
+		lock = null;
+	}
+
+	public ClientBroadcastThread(ThreadLock lock) {
+		this.lock = lock;
+	}
 
 	public void kill() {
 		NetworkConstants.LOGGER.log(Level.INFO, "Closing client UDP thread...");
@@ -37,8 +46,7 @@ public class ClientBroadcastThread extends Thread {
 			c = new DatagramSocket();
 			c.setBroadcast(true);
 
-			byte[] sendData = new StringBuilder().append(NetworkConstants.REQUEST_MESSAGE).append(":")
-					.append(ServerSocketHandler.getPort()).toString().getBytes();
+			byte[] sendData = NetworkConstants.UDP_REQUEST_MESSAGE.getBytes();
 
 			Collection<String> netmasks = NetworkUtils.getAllNetmasks();
 			for (String netmask : netmasks) {
@@ -87,6 +95,9 @@ public class ClientBroadcastThread extends Thread {
 			byte[] recvBuf = new byte[NetworkConstants.BUFFER];
 			DatagramPacket receivePacket = new DatagramPacket(recvBuf, recvBuf.length);
 			c.setSoTimeout(NetworkConstants.TIMEOUT);
+			synchronized (this) {
+				notifyAll();
+			}
 			do {
 				c.receive(receivePacket);
 
@@ -95,27 +106,36 @@ public class ClientBroadcastThread extends Thread {
 						+ receivePacket.getAddress().getHostAddress() + "\nData: " + message);
 
 				// Check if the message is correct
-				if (message.startsWith(NetworkConstants.RESPONSE_MESSAGE)) {
-					transition = false;
+				if (message.startsWith(NetworkConstants.UDP_RESPONSE_MESSAGE)) {
 					// Make connection
 					SocketHandler.openConnection(receivePacket.getAddress(),
 							Integer.parseInt(message.substring(message.lastIndexOf(":") + 1)));
 					c.close();
-					return;
+					if (lock != null)
+						lock.setTrigger(0);
+					break;
 				}
 			} while (receivePacket.getAddress().equals(InetAddress.getLocalHost()));
 		} catch (SocketTimeoutException e) {
 			NetworkConstants.LOGGER.log(Level.INFO, "Packet discovery timed out.");
 			c.close();
-			if (transition)
-				NetworkHandler.broadcastServer();
+			if (lock != null)
+				lock.setTrigger(3);
+			else
+				NetworkHandler.startupSequence();
 		} catch (IOException ex) {
 			if (run && !(ex instanceof SocketException))
 				NetworkConstants.LOGGER.log(Level.WARNING, ex.getMessage(), ex);
 		} finally {
 			if (!c.isClosed())
 				c.close();
+			if (lock != null) {
+				synchronized (lock) {
+					lock.notifyAll();
+				}
+			}
 		}
+		NetworkConstants.LOGGER.log(Level.INFO, "Client UDP thread closed.");
 	}
 
 }
