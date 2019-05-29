@@ -16,7 +16,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import com.Cardinal.NetworkAdmin.NetworkConstants;
 import com.Cardinal.NetworkAdmin.NetworkHandler;
-import com.Cardinal.NetworkAdmin.Crypto.CryptoManager;
+import com.Cardinal.NetworkAdmin.Security.CryptoManager;
 
 public class CommunicationHandler extends Thread {
 

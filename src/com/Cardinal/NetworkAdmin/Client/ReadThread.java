@@ -17,7 +17,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 import com.Cardinal.NetworkAdmin.NetworkConstants;
-import com.Cardinal.NetworkAdmin.Crypto.CryptoManager;
+import com.Cardinal.NetworkAdmin.Security.CryptoManager;
 
 public class ReadThread extends Thread {
 
