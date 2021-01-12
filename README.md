@@ -1,1 +1,2 @@
-"# NetworkAdmin" 
+# NetworkAdmin
+This project discontinued.
